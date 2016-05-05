@@ -1,0 +1,173 @@
+---
+title: "Sensitivity and Specificity"
+author: "Rich McGowan"
+date: "April 27, 2016"
+output: html_document
+---
+
+
+## Readings
+
+***APM***
+
+- ***Chapter 5 Measuring Performance in Regression Models*** (esp. ***5.2 The Variance Bias Trade-Off***)  (5 pages)
+- ***Chapter 11 Measuring Performance in Classification Models*** (~20 pages)
+- ***Chapter 7.4 K-Nearest Neighbors (regression)*** (2 pages)
+- ***Chapter 13.5 K-Nearest Neighbors (classification)*** (3 pages)
+
+
+```{r, echo=FALSE, results='hide', warning=FALSE }
+packs <-  c('ggplot2', 'magrittr', 'dplyr', 'caret', 'AppliedPredictiveModeling')
+
+for( nm in packs ) { 
+  # message(nm)
+  if( ! nm  %in% installed.packages()[,1]  ) install.packages(nm)
+  library(nm, character.only = TRUE)
+}
+
+.. = NULL  # For Aesthetics
+
+```
+
+
+## EXERCISE 1: Resampling
+
+`x` is a random variable. We want to not only know what the `mean(x)` is but want to calculate the uncertainty of `mean(x)`.  Measuring the uncertainty requires repeated measurements of `mean(x)`.
+
+- Calculate the mean of `x`.
+- Calculte the `sd( mean(x) )` using the **using 10-fold cross-validation**.  Create your own folds, show your work. (An example is for the Bootstrap is given as a hint. )
+
+
+```{r}
+set.seed(1) 
+x <- runif(20,1,20)
+mean_x <- mean(x)
+k=10
+# CROSS-VALIDATION
+# ... YOUR WORK HWEW
+folds <- createFolds(x, k = 10, returnTrain = TRUE)
+vector_means <- c(mean(x[folds$Fold01]),mean(x[folds$Fold02]),mean(x[folds$Fold03]),mean(x[folds$Fold04]),mean(x[folds$Fold05]),mean(x[folds$Fold06]),mean(x[folds$Fold07]),mean(x[folds$Fold08]),mean(x[folds$Fold09]),mean(x[folds$Fold10]), rm.na = TRUE)
+sd_10_fold <- sd(vector_means)
+var_10_fold <- var(vector_means)
+var_10_fold # Variance of the 10 Fold Training Set Means
+sd_10_fold  # Standard Deviation of the 10 Fold Training Set Means
+
+# BOOTSTRAP (EXAMPLE)
+sd_boot <- sapply(1:k, function(i) sample(x,replace=TRUE) %>% mean ) %>% sd
+
+sd_boot
+
+```
+
+
+- sd_cv   is: `r sd_cv`
+- sd_boot is: `r sd_boot`
+
+
+
+# Exercise 2: Binomial Metrics
+
+Here's a really simple Model of Versicolor iris based on the **iris** data :
+
+```{r}
+set.seed(1)
+data(iris)
+
+qplot( data=iris, x=Petal.Length, y=Sepal.Length, color=Species )
+
+# Create Dependent Variable
+iris$Versicolor <- 
+  ifelse( iris$Species == 'versicolor', "versicolor", "other" ) %>% as.factor
+iris$Species = NULL 
+
+wh <- sample.int( nrow(iris), size=nrow(iris)/2 )
+train <- iris[ wh,]
+test <- iris[ -wh, ]
+
+fit.glm <- glm( Versicolor ~ . - Sepal.Length, data=train, family=binomial )
+summary(fit.glm)
+
+
+```
+Use the models to and write functions to calculate:
+* Prevalence 
+* Accuracy
+* Error Rate / Misclassification Rate
+* True Positive Rate  
+* False Positive Rate
+* True Negative Rate  
+* False Negative Rate 
+* Sensitivity 
+* Specificity 
+* Recall 
+* Precision
+
+The functions should take two logical vectors of the same length, `y` and `yhat`
+
+```{r}
+prevalence = 0.2933333
+accuracy   = 0.7333333  
+error_rate = 0.2666667
+tpr =  0.5454545
+fpr = 0.1886792      
+tnr = 0.8113208
+sensitivity = 0.5454545
+specificity = 0.8113208
+recall = 0.5454545  
+precision = 0.5454545
+
+# EXAMPLE: fpr
+# The FPR is THE NUMBER OF FALSE POSITIVES / NEGATIVES (TN+FP)
+threshold = 0.5 
+y = test$Versicolor == 'versicolor'
+yhat = predict(fit.glm, test, type="response") > threshold
+######################## FALL OUT (FALSE POSITIVE RATE)
+fpr = function(y,yhat) {
+  sum(yhat & !y ) / # FP
+  sum(! y)    }      # N
+fpr(y,yhat)
+######################## SENSITIVITY (RECALL)
+tpr = function(y,yhat) {
+  sum(yhat & y ) / # TP
+  sum(y)    }      # P
+tpr(y,yhat)
+######################## FALSE NEGATIVE RATE (1-TPR)
+fnr = function(y,yhat) {
+  sum(!yhat & y ) / # FN
+  sum(y)    }      # TP + FN
+fnr(y,yhat)
+######################## SPECIFICITY (TRUE NEGATIVE RATE)
+tnr = function(y,yhat) {
+ sum(!yhat & !y ) / # TN
+  sum(!y)        # N 
+}
+tnr(y,yhat)
+######################## PRECISION (POSITVE PREDICTIVE VALUE) (1 - FDR)
+ppv = function(y,yhat) {
+ sum(yhat & y ) / # TP
+  (sum(yhat & y)+sum(yhat & !y)) # TP + FP 
+}
+ppv(y,yhat)
+######################## ACCURACY TP + TN / (TP + FP + FN + TN)
+acc = function(y,yhat) {
+ (sum(yhat & y)+sum(!yhat & !y))/(sum(yhat & y)+sum(!yhat & !y)+sum(yhat & !y)+sum(!yhat & y))
+}
+acc(y,yhat)
+######################## PREVALANCE TP + FN /(TP + FP + FN + TN)
+prv = function(y,yhat) {
+ (sum(y))/(sum(yhat & y)+sum(!yhat & !y)+sum(yhat & !y)+sum(!yhat & y))
+}
+prv(y,yhat)
+######################## ERROR RATE FP + FN / /(TP + FP + FN + TN)
+err = function(y,yhat) {
+ (sum(yhat & !y)+sum(!yhat & y))/(sum(yhat & y)+sum(!yhat & !y)+sum(yhat & !y)+sum(!yhat & y))
+}
+err(y,yhat)
+```
+
+- What is wrong with the modeling approach used?
+
+
+
+
+
