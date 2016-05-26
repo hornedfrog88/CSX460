@@ -1,0 +1,14 @@
+.RData
+.Rhistory
+.Rproj.user
+*.swp
+
+# These are to protect sensitive content
+admin
+
+*answers*
+.*answers.*
+*/*answers*
+assignments/*answers*.Rmd
+
+

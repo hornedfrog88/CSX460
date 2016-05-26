@@ -1,0 +1,137 @@
+---
+title: "05-exercises"
+author: "Richard McGowan"
+date: "2016-05-04"
+output: html_document
+---
+
+## Reading:
+- **APM** Chapter 8.1-8.5 "Regression Trees and Rule-Based Models" (25 pages)
+- **APM** Chapter 14.1-14.5 "Classification Trees and Rule-Based"  
+
+```{r, echo=FALSE, results='hide', warning=FALSE }
+packs <-  c('ggplot2', 'magrittr', 'dplyr', 'caret', 'AppliedPredictiveModeling')
+
+for( nm in packs ) { 
+  # message(nm)
+  if( ! nm  %in% installed.packages()[,1]  ) install.packages(nm)
+  library(nm, character.only = TRUE)
+}
+
+.. = NULL  # For Aesthetics
+
+```
+
+
+## Exercise 1: GermanCredit
+
+Revisit the GermanCredit data. Use `caret` to build models of `Class` using the following techniques:
+
+- glm
+- rpart
+- knn
+- party::ctree
+- randomForest
+- A method of your choice from the Caret Model List (you will need to install any dependencies)
+
+Save the caret objects with the names provided.
+
+```{r}
+require(randomForest)
+data(GermanCredit)
+gc <- GermanCredit
+dim(gc)
+ctrl <- trainControl( method="boot", number=5
+                      , classProb=TRUE, savePrediction=TRUE )
+# Your work here. 
+
+###glm (generalized linear model)
+fit.glm <- train( Class ~ ., data=gc, trControl=ctrl
+              , method="glm", family="binomial" )
+fit.glm
+
+###knn (kth nearest neighbor)
+fit.knn <- train( Class ~ ., data=gc, trControl=ctrl
+              , method="knn", tuneGrid=data.frame( k=c(40,50,60)))
+fit.knn
+
+###rpart (recursive partition-tree)
+fit.rpart <- train( Class ~ ., data=gc, trControl=ctrl
+              , method="rpart", tuneLength=20) 
+fit.rpart
+
+###rf (random forest)
+fit.rf <- train(Class ~ .,data= gc ,trControl=ctrl,method="rf",
+                      prox=TRUE,allowParallel=TRUE)
+fit.rf
+
+###myown (gbm-generalized boosted model)
+names(getModelInfo())
+getModelInfo()$gbm$type
+fit.gbm <- train(Class ~ .,data= gc ,trControl=ctrl, 
+                  method='gbm', 
+                  metric = "ROC")
+fit.gbm
+```
+
+
+- Compare the models using `caret::confusionMatrix`
+- Comparing the models Using the `pROC` packages
+  - create ROC curves for the models 
+  
+Show your work! 
+
+```{r}
+library(pROC)
+###glm (generalized linear model)
+fit.glm$finalModel %>% summary()   # Model output
+fit.glm  %>% confusionMatrix( positive="Bad")  # Confusion Matrix
+table(fit.glm$pred$pred, fit.glm$pred$obs) %>% confusionMatrix()
+#ROC-glm
+roc.glm <- roc(fit.glm$pred$obs, fit.glm$pred$Bad, auc=TRUE )
+roc.glm %>% plot( print.auc=TRUE, grid=TRUE)
+###knn (kth nearest neighbor)
+fit.knn$finalModel %>% summary()   # Model output
+fit.knn  %>% confusionMatrix( positive="Bad")  # Confusion Matrix
+table(fit.knn$pred$pred, fit.knn$pred$obs) %>% confusionMatrix()
+#ROC-knn
+roc.knn <- roc(fit.knn$pred$obs, fit.knn$pred$Bad, auc=TRUE )
+roc.knn %>% plot( print.auc=TRUE, grid=TRUE)
+###rpart (recursive partition-tree)
+fit.rpart$finalModel %>% summary()   # Model output
+fit.rpart  %>% confusionMatrix( positive="Bad")  # Confusion Matrix
+table(fit.rpart$pred$pred, fit.rpart$pred$obs) %>% confusionMatrix()
+#ROC-rpart
+roc.rpart <- roc(fit.rpart$pred$obs, fit.rpart$pred$Bad, auc=TRUE )
+roc.rpart %>% plot( print.auc=TRUE, grid=TRUE)
+###rf (random forest)
+fit.rf$finalModel %>% summary()   # Model output
+fit.rf  %>% confusionMatrix( positive="Bad")  # Confusion Matrix
+table(fit.rf$pred$pred, fit.rf$pred$obs) %>% confusionMatrix()
+#ROC-rf
+roc.rf <- roc(fit.rf$pred$obs, fit.rf$pred$Bad, auc=TRUE )
+roc.rf %>% plot( print.auc=TRUE, grid=TRUE)
+###myown (gbm-generalized boosted model)
+fit.gbm$finalModel %>% summary()   # Model output
+fit.gbm  %>% confusionMatrix( positive="Bad")  # Confusion Matrix
+table(fit.gbm$pred$pred, fit.gbm$pred$obs) %>% confusionMatrix()
+#ROC-gbm
+roc.gbm <- roc(fit.gbm$pred$obs, fit.gbm$pred$Bad, auc=TRUE )
+roc.gbm %>% plot( print.auc=TRUE, grid=TRUE)
+
+```
+
+
+Q: Which models would you select based on these tools?
+
+Q: If you assume that a `Class=="bad""` is 10 more costly than `Class=="good"`, determine your threshold for the model of your choice.  Show your work.
+
+
+```{r}
+#I would choose the rf-random forest model based on the .7404 accuracy and the .35 Kappa value (when the mtry tuning parameter = 31)
+avgpredBad <- mean(fit.rf$pred$Bad)
+avgpredBad
+avgpredGood <- mean(fit.rf$pred$Good)
+avgpredGood
+
+```

@@ -1,0 +1,120 @@
+---
+title: "06-exercises"
+author: "Rich McGowan"
+date: "2016-05-12"
+output: html_document
+---
+
+## Reading:
+- **APM** Chapter 8.6 and 8.8 
+- **APM** Chapter 14.8 
+- **APM** Chapter 7.1 & 7.3 "Non-Linear Regression Models"
+- **APM** Chapter 13.2 & 13.4 "Non-Linear Classifcation Models"
+
+
+```{r,echo=FALSE}
+
+packs <-  c('AppliedPredictiveModeling', 'ggplot2', 'magrittr', 'dplyr')
+
+for( nm in packs ) { 
+  # message(nm)
+  if( ! nm  %in% installed.packages()[,1]  ) install.packages(nm)
+  library(nm, character.only = TRUE)
+}
+
+# Load data set into environment
+data(FuelEconomy)
+.. = NULL  # Needed for aesthetics 
+
+FE <- dplyr::bind_rows(cars2010, cars2011, cars2012)    # Define Da
+
+```
+
+## Fuel Economy 
+
+This week we return to the Fuel Economy Data having learned much about model building. This assignment is to go through the process of building several regression models and pick the most predictive model. Use the `FE` data set created for you above.
+
+
+Start by making choosing a metric and making a naive guess of model performance: 
+
+Metric: RMSE
+
+Naive Guess: Simple linear regression model to predict FE.
+
+Expected Model Performance (based on Naive Guess): Simple linear regression model will have a significantly lower RMSE than a mean line.
+
+Show your work below for the calculations
+
+```{r} 
+naive_guess <- mean(FE$FE)
+qplot( y=FE$FE, x=FE$EngDispl ) + geom_hline(yintercept=naive_guess,col="red")
+# RMSE of the mean line
+naive_rmse<- rmse(FE$FE,naive_guess)
+#simple linear regression model
+fit.2010 <- lm( FE ~ EngDispl, data=cars2010 )
+y.2011 <- predict( fit.2010, data=cars2011 )
+# RMSE of the naive guess
+err_naive_guess = rmse(cars2010$FE,y.2011)
+
+naive_rmse  #8.10
+err_naive_guess  # 4.62
+```
+
+
+Based only your intuition, how low do your think you can get your metric: The RMSE should be able to be reduced by at least 1.5
+
+
+## Examine your data
+
+ * Plot your response/outcome 
+
+ * Make a guess of a strong predictor: Engine Displacement  
+ * Plot your response vs your predictor. 
+
+```{r}
+
+#response vs. predictor
+qplot( y=FE$FE, x=FE$EngDispl )
+
+```
+
+
+
+## Build Simple Models
+
+Using **caret**, build a simple linear model and a simple tree model. 
+
+```{r}
+
+fit.lm <- lm( FE ~ EngDispl, data=FE )
+summary(fit.lm)
+fit.rp <- rpart( FE ~ EngDispl, data=FE)
+summary(fit.rp)
+
+```
+
+
+What did you learn about the data from these models.
+
+
+
+## Build More Advanced Models
+
+Now refine your models. Use **caret** to build advanced models:
+- one that uses model averaging (bagging) 
+- one that uses boosting 
+
+```{r}
+# Your work here.
+fit.bag <- bagging(FE ~ EngDispl, data=FE) #bagging model
+summary(fit.bag)
+fit.boost <- gbm(FE ~ EngDispl, data=FE) #gbm boosting model
+summary(fit.boost)
+
+```
+
+
+## Conclusion 
+
+Which model would you use and why?  Under different circumstances why would you choose one of the other models.
+
